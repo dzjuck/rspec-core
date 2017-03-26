@@ -97,7 +97,9 @@ module RSpec::Core
       it 'defaults to standard output' do
         expect(config.output_stream).to eq $stdout
       end
+    end
 
+    describe "#output_stream=" do
       it 'is configurable' do
         io = double 'output io'
         config.output_stream = io
@@ -124,6 +126,12 @@ module RSpec::Core
           config.output_stream = config.output_stream
           expect(config).not_to have_received(:warn)
         end
+      end
+
+      it 'changes the output wrapper output' do
+        io = StringIO.new
+        expect(config.output_wrapper).to receive(:output=).with(io)
+        config.output_stream = io
       end
     end
 
@@ -1448,6 +1456,11 @@ module RSpec::Core
           expect(config.formatter_loader).to receive(:add).with('these','options')
           config.send(config_method,'these','options')
         end
+
+        it "uses the output wrapper as a default output" do
+          expect(config.formatter_loader).to receive(:add).with('these', config.output_wrapper)
+          config.send(config_method,'these')
+        end
       end
     end
 
@@ -1456,6 +1469,12 @@ module RSpec::Core
         config.add_formatter 'doc'
         config.formatters.clear
         expect(config.formatters).to_not eq []
+      end
+    end
+
+    describe "#configuration" do
+      it "returns the same object every time" do
+        expect(config.output_wrapper).to equal(config.output_wrapper)
       end
     end
 
@@ -2291,6 +2310,32 @@ module RSpec::Core
         config.add_formatter "doc"
         config.reset
         expect(config.formatters).to be_empty
+      end
+
+      it "clears the output wrapper" do
+        config.output_stream = StringIO.new
+        config.reset
+        expect(config.instance_variable_get("@output_wrapper")).to be_nil
+      end
+    end
+
+    describe "#reset_reporter" do
+      it "clears the reporter" do
+        expect(config.reporter).not_to be_nil
+        config.reset
+        expect(config.instance_variable_get("@reporter")).to be_nil
+      end
+
+      it "clears the formatters" do
+        config.add_formatter "doc"
+        config.reset
+        expect(config.formatters).to be_empty
+      end
+
+      it "clears the output wrapper" do
+        config.output_stream = StringIO.new
+        config.reset
+        expect(config.instance_variable_get("@output_wrapper")).to be_nil
       end
     end
 

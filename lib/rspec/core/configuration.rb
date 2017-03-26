@@ -1,6 +1,7 @@
 RSpec::Support.require_rspec_core "backtrace_formatter"
 RSpec::Support.require_rspec_core "ruby_project"
 RSpec::Support.require_rspec_core "formatters/deprecation_formatter"
+RSpec::Support.require_rspec_core "output_wrapper"
 
 module RSpec
   module Core
@@ -227,6 +228,7 @@ module RSpec
             "it to take effect. (Called from #{CallerFilter.first_non_rspec_line})"
         else
           @output_stream = value
+          output_wrapper.output = @output_stream
         end
       end
 
@@ -482,12 +484,14 @@ module RSpec
         @spec_files_loaded = false
         @reporter = nil
         @formatter_loader = nil
+        @output_wrapper = nil
       end
 
       # @private
       def reset_reporter
         @reporter = nil
         @formatter_loader = nil
+        @output_wrapper = nil
       end
 
       # @private
@@ -870,7 +874,7 @@ module RSpec
       # Adds a formatter to the set RSpec will use for this run.
       #
       # @see RSpec::Core::Formatters::Protocol
-      def add_formatter(formatter, output=output_stream)
+      def add_formatter(formatter, output=output_wrapper)
         formatter_loader.add(formatter, output)
       end
       alias_method :formatter=, :add_formatter
@@ -908,6 +912,11 @@ module RSpec
       end
 
       # @private
+      def output_wrapper
+        @output_wrapper ||= OutputWrapper.new(output_stream)
+      end
+
+      # @private
       #
       # This buffer is used to capture all messages sent to the reporter during
       # reporter initialization. It can then replay those messages after the
@@ -936,7 +945,7 @@ module RSpec
         @reporter_buffer || @reporter ||=
           begin
             @reporter_buffer = DeprecationReporterBuffer.new
-            formatter_loader.prepare_default output_stream, deprecation_stream
+            formatter_loader.prepare_default output_wrapper, deprecation_stream
             @reporter_buffer.play_onto(formatter_loader.reporter)
             @reporter_buffer = nil
             formatter_loader.reporter
